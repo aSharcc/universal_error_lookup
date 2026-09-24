@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <meta charset="UTF-8">
         <title>Universal Error Lookup</title>
-
+        <link rel="stylesheet" href="./static/style.css">
     </head>
     <body>
         <h1>UNIVERSAL ERROR LOOKUP</h1>
         <form method="POST" action="/">
-            <input type="text" name="error_code" placeholder="Enter error code">
+            <input type="text" name="error_code" placeholder="Enter error code" value="{{ error_code if error_code else '' }}" required>
+            <input type="text" placeholder="Context, keep to 1/2 words" value="{{ context if context else '' }}" name="context">
             <button type="submit">Lookup</button>
         </form>
 
@@ -20,15 +22,73 @@
             <p><b>Error Code:</b> {{ result.error_code }}</p>
             <p><b>Source API:</b> {{ result.source_api }}</p>
             <p><b>Result Summary:</b> {{ result.result_summary }}</p>
-            <a href="https://www.google.com/search?q={{ result.error_code }}+error+fix" target="_blank">
+            <p><b>Context:</b> {{ result.context }}</p>
+            <a href="https://www.google.com/search?q={{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
                 <button type="button">Google Search</button>
             </a>
-            <a href="https://www.google.com/search?q=site:reddit.com+{{ result.error_code }}+error+fix" target="_blank">
+            <a href="https://www.google.com/search?q=site:reddit.com+{{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
                 <button type="button">Reddit Search</button>
             </a>
-            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ result.error_code }}+error+fix" target="_blank">
+            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
                 <button type="button">Stack Overflow Search</button>
             </a>
+        {% endif %}
+
+        {% if user_solutions %}
+        <h2>User Solutions</h2>
+        <table>
+            <thead>
+                <th scope="col">Author</th>
+                <th scope="col">Votes</th>
+                <th scope="col">Solution</th>
+                <th scope="col">Vote</th>
+            </thead>
+            <tbody>
+                {% for solution in user_solutions %}
+                <tr>
+                    <td>{{ solution.author }}</td>
+                    <td>{{ solution.votes }}</td>
+                    <td>{{ solution.solution }}</td>
+                    <td>
+                        {% if solution.id in voted_solutions %}
+                            <span style="color: green; font-weight: bold;">Voted</span>
+                        {% else %}
+                            <form method="POST" action="/vote">
+                                <input type="hidden" name="solution_id" value="{{ solution.id }}">
+                                <input type="hidden" name="error_code" value="{{ error_code }}">
+                                <input type="hidden" name="context" value="{{ context }}">
+                                <input type="hidden" name="page" value="{{ page }}">
+                                <button type="submit" name="vote_type" value="upvote">Upvote</button>
+                                <button type="submit" name="vote_type" value="downvote">Downvote</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                
+            </tbody>
+        </table>
+        <div>
+            {% if page > 1 %}
+                <a href="/?error_code={{ error_code }}&context={{ context|urlencode }}&page={{ page - 1 }}">
+                    <button type="button">Previous</button>
+                </a>
             {% endif %}
+            <span>{{ 1+(page-1)*10 }} to {{ (page)*10 }} out of {{ total_count }}</span>
+            {% if (page*10 < total_count) %}
+            <a href="/?error_code={{ error_code }}&context={{ context|urlencode }}&page={{ page + 1 }}">
+                <button type="button">Next</button>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        <h2>Add Solution</h2>
+        <form method="POST" action="/add_solution">
+            <input type="text" name="error_code" placeholder="Enter error code" value="{{ result.error_code if result else '' }}" required>
+            <input type="text" placeholder="Context, keep to 1/2 words" name="context" value="{{ result.context if result else '' }}">
+            <input type="text" placeholder="Author" name="author" required>
+            <textarea type="text" name="solution" placeholder="Describe the solution" required></textarea>
+            <button type="submit">Submit Solution</button>
+        </form>
     </body>
 </html>
