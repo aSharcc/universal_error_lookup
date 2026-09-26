@@ -1,43 +1,24 @@
 import sqlite3 # import the sqlite3 module for database operations
-from flask import Flask, request, render_template, redirect, session # import Flask and other necessary modules
+from flask import Flask, request, render_template, redirect, session, flash, url_for # import Flask and other necessary modules
 import requests # import the requests module for making HTTP requests
 import os # import the os module for interacting with the operating system
 from google import genai # import the genai module from the google package for AI functionality
 
 app = Flask(__name__) # create a Flask application instance
-
 app.secret_key = os.urandom(24)
 
+DATABASE = "error_lookup.db"
+
 def init_db():
-    with sqlite3.connect("error_lookup.db") as connection:
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS solutions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                error_code TEXT NOT NULL,
-                solution TEXT NOT NULL,
-                author TEXT NOT NULL,
-                context TEXT NOT NULL DEFAULT '',
-                votes INTEGER DEFAULT 0
-            )
-        """)
-
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS searches (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                error_code TEXT NOT NULL,
-                source_api TEXT NOT NULL,
-                result_summary TEXT NOT NULL,
-                context TEXT NULL DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(error_code, context)
-            )
-        """)
-
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_searches_code ON searches(error_code)")
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_solutions_code ON solutions(error_code)")
+    if not os.path.exists("schema.sql"):
+        print("Schema.sql not found !!")
+        return
+    with sqlite3.connect(DATABASE) as connection:
+        with open("schema.sql") as file:
+            connection.executescript(file.read())
 
 def get_db():
-    connection = sqlite3.connect("error_lookup.db") # connect to the SQLite database
+    connection = sqlite3.connect(DATABASE) # connect to the SQLite database
     connection.row_factory = sqlite3.Row # set the row factory to return rows as dictionaries
     return connection # return the database connection
 
@@ -77,11 +58,12 @@ def get_error_from_ai(error_code, context):
         )
 
         response = client.models.generate_content( 
-            model="gemini-2.5-flash", 
+            model="models/gemini-3.8-flash", 
             contents=contents
         )
         return ("AI Generated", response.text.strip()) # return the AI-generated explanation of the error code
     except Exception as e:
+        print(f"Gemini API Error: {e}")
         return ("Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
 
 def get_error_info(error_code, context):
@@ -96,8 +78,10 @@ def get_error_info(error_code, context):
 @app.route("/", methods=["GET", "POST"]) # define the route for the home page
 def index():
     error_code = request.form.get("error_code", "").strip() or request.args.get("error_code", "").strip() # get the error code from the form data
-    context = request.form.get("context", "").strip() or request.args.get("context", "").strip() # get the context from the form data (optional)
-    page = request.form.get("page", 1, type=int) or request.args.get("page", 1, type=int)
+    context = (request.form.get("context") or request.args.get("context") or "").strip()
+    page = request.args.get("page", 1, type=int) or request.form.get("page", 1, type=int)
+
+    print(page)
 
     if error_code: # check if the error code is empty
         connection = get_db() # get a database connection
@@ -164,10 +148,11 @@ def add_solution():
     error_code = request.form.get("error_code", "").strip() # get the error code from the form data
     author = request.form.get("author", "").strip() # get the author from the form data
     solution = request.form.get("solution", "").strip() # get the solution from the form
-    context = request.form.get("context", "").strip() # get the context from the form
+    context = (request.form.get("context") or "").strip()
 
     if not error_code or not author or not solution: # check if any of the required fields are empty
-        return render_template("index.html", error="Please enter all required fields to add a solution.") # redirect to the home page if any required field is empty
+        flash("Please fill all required fields.")
+        return redirect(url_for("index", error_code=error_code, context=context))
 
     connection = get_db() # get a database connection
     try:
@@ -178,7 +163,7 @@ def add_solution():
         connection.commit() # commit the changes to the database
     finally:
         connection.close() # close the database connection
-    return redirect(f"/?error_code={error_code}&context={context}")
+    return redirect(url_for("index", error_code=error_code, context=context))
 
 @app.route("/vote", methods=["POST"]) # define the route for the searches page
 def vote():
@@ -214,7 +199,7 @@ def vote():
             finally:
                 connection.close() # close the database connection
 
-            return redirect(f"/?error_code={error_code}&context={context}&page={page}")
+            return redirect(url_for("index", error_code=error_code, context=context, page=page))
         
     return redirect("/")
     

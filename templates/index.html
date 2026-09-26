@@ -3,19 +3,40 @@
     <head>
         <meta charset="UTF-8">
         <title>Universal Error Lookup</title>
-        <link rel="stylesheet" href="./static/style.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        <link rel="stylesheet" href="static/style.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+                body {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    font-family: "Space Grotesk", sans-serif;
+                    padding: 2rem 1rem;
+                    line-height: 1.5;
+                }
+        </style>
     </head>
     <body>
         <h1>UNIVERSAL ERROR LOOKUP</h1>
         <form method="POST" action="/">
             <input type="text" name="error_code" placeholder="Enter error code" value="{{ error_code if error_code else '' }}" required>
             <input type="text" placeholder="Context, keep to 1/2 words" value="{{ context if context else '' }}" name="context">
-            <button type="submit">Lookup</button>
+            <button type="submit">Lookup !!</button>
         </form>
-
         {% if error %}
             <p style="color: red;">{{ error }}</p>
         {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         
         {% if result %}
             <h2>Result:</h2>
@@ -23,13 +44,14 @@
             <p><b>Source API:</b> {{ result.source_api }}</p>
             <p><b>Result Summary:</b> {{ result.result_summary }}</p>
             <p><b>Context:</b> {{ result.context }}</p>
-            <a href="https://www.google.com/search?q={{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
+            {% set search_query = (result.error_code + ' ' + (result.context or ''))|trim + ' error fix' %}
+            <a href="https://www.google.com/search?q={{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
                 <button type="button">Google Search</button>
             </a>
-            <a href="https://www.google.com/search?q=site:reddit.com+{{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.google.com/search?q=site:reddit.com+{{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
                 <button type="button">Reddit Search</button>
             </a>
-            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ result.error_code|urlencode }}+error+fix" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
                 <button type="button">Stack Overflow Search</button>
             </a>
         {% endif %}
@@ -69,6 +91,7 @@
             </tbody>
         </table>
         <div>
+            <p>{{ page }}</p>
             {% if page > 1 %}
                 <a href="/?error_code={{ error_code }}&context={{ context|urlencode }}&page={{ page - 1 }}">
                     <button type="button">Previous</button>
