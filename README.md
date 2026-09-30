@@ -10,7 +10,7 @@ This is a webapp, designed to help software engineers, system admins, students, 
 - **Database lookup:** Checks the local database for stored problems and solutions.
 - **Public API lookup:** If not found yet, queries APIs such as `httpstatuses.io/` to attempt to retrieve information and solutions.
 - **OS system-level error code lookup:** If not found yet,  attempts to retrieve data from Python's native `os.sterror`.
-- **AI-Generated Solutiuons:** If no solution can be found, the application querries Google Gemini model `models/gemini-3.8-flash` to generate a concise description and cause.
+- **AI-Generated Solutiuons:** If no solution can be found, the application queries Google Gemini model `models/gemini-3.8-flash` to generate a concise description and cause.
 - **Solution Caching:** When a new solution is retrieved, it is cached into the database to reduce API usage and increase efficiency.
 - **Targeted Deep Links:** Users are provided with buttons to send them to pre-filtered search queries on Google, Reddit, and Stack Overflow.
 - **User Submitted Solutions:** Users are also able to view and upload solutions made by others and vote on these. The results are dynamically ordered by votes and have integrated pagination.
@@ -36,15 +36,15 @@ A script that initialises the database using the script from `schema.sql`.
 The Jinja2 template for the frontend webpage. It is built on PICO CSS for a clean design.
 - Input for error code and optional context. 
 - Conditional logic, if a part has no information, does not render to keep page clean.
-- Paginated user submitted solutions. Uses GET to pass querry back to `"/"` to retrieve next page of inforamtion.
+- Paginated user submitted solutions. Uses GET to pass query back to `"/"` to retrieve next page of inforamtion.
 
-### `requirments.txt`
+### `requirements.txt`
 Specifies all python package dependancies.
 
 ## How to run
 
 1. Clone repo and enter the directiory
-2. **Install Dependancies:** `pip install -r requirments.txt`
+2. **Install Dependancies:** `pip install -r requirements.txt`
 3. **Setup environmental variables:** `export GEMINI_API_KEY="your-api-key-here"` ([Get Gemini API key](https://aistudio.google.com/api-keys))
 4. **Initialise Database:** `py init_db.py`
 5. **Launch application:** `py app.py`

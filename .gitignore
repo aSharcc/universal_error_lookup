@@ -1,6 +1,8 @@
 # Virtual environment
 venv/
-*.venv
+*.venv/
+env/
+ENV/
 
 # Database & runtime files
 *.db
@@ -9,6 +11,23 @@ venv/
 # Python bytecode & cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Environment variables / secret keys
 .env
+.env.*
+!.env.example
+
+# IDEs and Code Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Flask session / instance folder
+instance/
