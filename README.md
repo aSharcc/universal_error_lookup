@@ -2,6 +2,10 @@
 
 [Video Demo](https://youtu.be/GXGimSqpsr4)
 
+[Try it !!](https://error-code-lookup-server.hackclub.app/)
+
+![Image of UI](assets/UI.png)
+
 #### Description:
 
 This is a webapp, designed to help software engineers, system admins, students, even gamers to easily and quickly understand and solve error codes.
@@ -14,6 +18,17 @@ This is a webapp, designed to help software engineers, system admins, students, 
 - **Solution Caching:** When a new solution is retrieved, it is cached into the database to reduce API usage and increase efficiency.
 - **Targeted Deep Links:** Users are provided with buttons to send them to pre-filtered search queries on Google, Reddit, and Stack Overflow.
 - **User Submitted Solutions:** Users are also able to view and upload solutions made by others and vote on these. The results are dynamically ordered by votes and have integrated pagination.
+
+## How to run it locally
+
+Python Version 3.12.0
+
+1. Clone repo and enter the directiory
+2. **Install Dependancies:** `pip install -r requirements.txt`
+3. **Setup environmental variables:** `export GEMINI_API_KEY="your-api-key-here"` ([Get Gemini API key](https://aistudio.google.com/api-keys))
+4. **Initialise Database:** `py init_db.py`
+5. **Launch application:** `py app.py`
+6. **Navigate to webapp:** `http://127.0.0.1:5000`
 
 ## File Structure and contents
 
@@ -41,11 +56,8 @@ The Jinja2 template for the frontend webpage. It is built on PICO CSS for a clea
 ### `requirements.txt`
 Specifies all python package dependancies.
 
-## How to run
+## Credits
 
-1. Clone repo and enter the directiory
-2. **Install Dependancies:** `pip install -r requirements.txt`
-3. **Setup environmental variables:** `export GEMINI_API_KEY="your-api-key-here"` ([Get Gemini API key](https://aistudio.google.com/api-keys))
-4. **Initialise Database:** `py init_db.py`
-5. **Launch application:** `py app.py`
-6. **Navigate to webapp:** `http://127.0.0.1:5000`
+**Pico CSS** for easy and clean UI
+**Google Gemini API** for AI solution fallback
+**Httpstatuses** for HTTP status code lookups
