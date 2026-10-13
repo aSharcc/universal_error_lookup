@@ -21,6 +21,16 @@
         <h1>UNIVERSAL ERROR LOOKUP</h1>
         <form method="POST" action="/">
             <input type="text" name="error_code" placeholder="Enter error code" value="{{ error_code if error_code else '' }}" required>
+            {% if history %}
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Recent Searches</strong>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                        {% for error_code in history %}
+                            <a href="/?error_code={{ error_code|urlencode }}" class="outline" role="button" style="padding: 0.2rem 0.6rem; font-size: 0.85rem;">{{ error_code }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
             <input type="text" placeholder="Context, keep to 1/2 words" value="{{ context if context else '' }}" name="context">
             <button type="submit">Lookup !!</button>
         </form>
@@ -74,7 +84,7 @@
                             <form method="POST" action="/vote">
                                 <input type="hidden" name="solution_id" value="{{ solution.id }}">
                                 <input type="hidden" name="error_code" value="{{ error_code }}">
-                                <input type="hidden" name="context" value="{{ context }}">
+                                <input type="hidden" name="context" value="{{ context or '' }}">
                                 <input type="hidden" name="page" value="{{ page }}">
                                 <button type="submit" name="vote_type" value="upvote">Upvote</button>
                                 <button type="submit" name="vote_type" value="downvote">Downvote</button>
@@ -89,7 +99,7 @@
         <div>
             <p>{{ page }}</p>
             {% if page > 1 %}
-                <a href="/?error_code={{ error_code }}&context={{ context|urlencode }}&page={{ page - 1 }}">
+                <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page - 1 }}">
                     <button type="button">Previous</button>
                 </a>
             {% endif %}
@@ -106,7 +116,7 @@
             <input type="text" name="error_code" placeholder="Enter error code" value="{{ result.error_code if result else '' }}" required>
             <input type="text" placeholder="Context, keep to 1/2 words" name="context" value="{{ result.context if result else '' }}">
             <input type="text" placeholder="Author" name="author" required>
-            <textarea type="text" name="solution" placeholder="Describe the solution" required></textarea>
+            <textarea name="solution" placeholder="Describe the solution" required></textarea>
             <button type="submit">Submit Solution</button>
         </form>
     </body>

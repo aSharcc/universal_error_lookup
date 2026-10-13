@@ -81,7 +81,9 @@ def index():
     context = (request.form.get("context") or request.args.get("context") or "").strip()
     page = request.args.get("page", 1, type=int) or request.form.get("page", 1, type=int)
 
-    print(page)
+    if "search_history" not in session:
+        session["search_history"] = []
+    history = session["search_history"]
 
     if error_code: # check if the error code is empty
         connection = get_db() # get a database connection
@@ -128,15 +130,21 @@ def index():
             connection.close() # close the database connection
 
         voted_solutions = session.get("voted_solutions", []) 
+        if not history or history[-1] != error_code:
+            history.append(error_code)
+            session["search_history"] = history[-10:]
+            session.modified = True
 
         return render_template(
             "index.html",
             error_code=error_code, 
-            result=result_data, context=context, 
+            result=result_data, 
+            context=context, 
             user_solutions=user_solutions,
             voted_solutions=voted_solutions,
             page=page,
-            total_count=total_count
+            total_count=total_count,
+            history=history
         ) # render the index.html template with the new result
 
     return render_template("index.html")
