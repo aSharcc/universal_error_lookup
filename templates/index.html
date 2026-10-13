@@ -45,7 +45,10 @@
 
         
         {% if result %}
-            <h2>Result:</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0rem;">
+                <h2>Result:</h2>
+                <button style="background-color: red; margin: 0;" data-link="{{ url_for('index', error_code=error_code or '', context=context or '', _external=True) }}" onclick="copyLink(this)">Share</button>
+            </div>
             <p><b>Error Code:</b> {{ result.error_code }}</p>
             <p><b>Source API:</b> {{ result.source_api }}</p>
             <p><b>Result Summary:</b> {{ result.result_summary }}</p>
@@ -105,7 +108,7 @@
             {% endif %}
             <span>{{ 1+(page-1)*10 }} to {{ (page)*10 }} out of {{ total_count }}</span>
             {% if (page*10 < total_count) %}
-            <a href="/?error_code={{ error_code }}&context={{ context|urlencode }}&page={{ page + 1 }}">
+            <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page + 1 }}">
                 <button type="button">Next</button>
             </a>
             {% endif %}
@@ -119,5 +122,26 @@
             <textarea name="solution" placeholder="Describe the solution" required></textarea>
             <button type="submit">Submit Solution</button>
         </form>
+
+        <script>
+            function copyLink(button) {
+                const link = button.getAttribute("data-link")
+                const originalText=button.textContent;
+
+                navigator.clipboard.writeText(link).then(() => {
+                    button.textContent="Copied !!";
+                    setTimeout(() => {
+                        button.textContent=originalText;
+                    }, 1000)
+                }).catch(err => {
+                    console.error("failed t o copy: ", err);
+                    button.textContent="Failed to Copy :/";
+                    setTimeout(() => {
+                        button.textContent=originalText;
+                    }, 1000)
+                });
+            }
+        </script>
+
     </body>
 </html>
