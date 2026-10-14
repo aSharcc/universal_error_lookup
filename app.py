@@ -59,7 +59,8 @@ def get_error_from_ai(error_code, context):
 
         response = client.models.generate_content( 
             model="models/gemini-3.5-flash-lite", 
-            contents=contents
+            contents=contents,
+            timeout=5
         )
         return ("AI Generated", response.text.strip()) # return the AI-generated explanation of the error code
     except Exception as e:
