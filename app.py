@@ -5,7 +5,11 @@ import os # import the os module for interacting with the operating system
 from google import genai # import the genai module from the google package for AI functionality
 
 app = Flask(__name__) # create a Flask application instance
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_key!!")
+
+app.config['SESSION_COOKIE_SECURE'] = False 
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 DATABASE = "error_lookup.db"
 
@@ -59,8 +63,7 @@ def get_error_from_ai(error_code, context):
 
         response = client.models.generate_content( 
             model="models/gemini-3.5-flash-lite", 
-            contents=contents,
-            timeout=5
+            contents=contents
         )
         return ("AI Generated", response.text.strip()) # return the AI-generated explanation of the error code
     except Exception as e:
@@ -148,7 +151,7 @@ def index():
             history=history
         ) # render the index.html template with the new result
 
-    return render_template("index.html")
+    return render_template("index.html", history=history)
         
     
 
@@ -207,9 +210,10 @@ def vote():
                 session.modified = True
             finally:
                 connection.close() # close the database connection
-
-            return redirect(url_for("index", error_code=error_code, context=context, page=page))
-        
+            if error_code:
+                return redirect(url_for("index", error_code=error_code, context=context, page=page))
+            return redirect(url_for("index"))    
+    
     return redirect("/")
     
 if __name__ == "__main__": # check if the script is run directly
