@@ -52,8 +52,8 @@
             </div>
             <p><b>Error Code:</b> {{ result.error_code }}</p>
             <p><b>Source API:</b> {{ result.source_api }}</p>
-            <p><b>Title:</b> {{ result.title | markdown}}</p>
-            <p><b>Result Summary:</b> {{ result.result_summary | markdown}}</p>
+            <div><b>Title:</b> {{ result.title | markdown}}</div>
+            <div><b>Result Summary:</b> {{ result.result_summary | markdown}}</div>
             {% if result.context != '' %}
                 <p><b>Context:</b> {{ result.context }}</p>
             {% endif %}
@@ -73,10 +73,12 @@
         <h2>User Solutions</h2>
         <table>
             <thead>
-                <th scope="col">Author</th>
-                <th scope="col">Votes</th>
-                <th scope="col">Solution</th>
-                <th scope="col">Vote</th>
+                <tr>
+                    <th scope="col">Author</th>
+                    <th scope="col">Votes</th>
+                    <th scope="col">Solution</th>
+                    <th scope="col">Vote</th>
+                </tr>
             </thead>
             <tbody>
                 {% for solution in user_solutions %}
