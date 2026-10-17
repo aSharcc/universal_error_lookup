@@ -2,7 +2,11 @@ import sqlite3 # import the sqlite3 module for database operations
 from flask import Flask, request, render_template, redirect, session, flash, url_for # import Flask and other necessary modules for webapp functionallity
 import requests # import the requests module for making HTTP requests
 import os # import the os module for interacting with the operating system
+from dotenv import load_dotenv
 from google import genai # import the genai module from the google package for AI functionality
+import markdown2
+
+load_dotenv()
 
 app = Flask(__name__) # create a Flask application instance
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_key!!")
@@ -65,12 +69,17 @@ def get_error_from_ai(error_code, context):
             model="models/gemini-3.5-flash-lite", 
             contents=contents
         ).text
-        response = response.split('\n', 1) # split the title and the content
+        if response:
+            parts = response.split('\n', 1) # split the title and the content
+        else:
+            parts = ["", ""]
+        if len(parts) != 2:
+            parts = ["", ""]
         print(response)
-        return ("AI Generated", response[0], response[1].strip()) # return the AI-generated explanation of the error code
+        return ("AI Generated", parts[0].strip(), parts[1].strip()) # return the AI-generated explanation of the error code
     except Exception as e:
         print(f"Gemini API Error: {e}")
-        return ("Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
+        return ("Manual Search Needed", "Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
 
 def get_error_info(error_code, context):
     http_result = get_http_error(error_code)
@@ -219,6 +228,12 @@ def vote():
             return redirect(url_for("index"))    
     
     return redirect("/")
+
+@app.template_filter("markdown")
+def render_markdown(text):
+    if not text:
+        return ""
+    return markdown2.markdown(text, extras=["safe-mode"])
     
 if __name__ == "__main__": # check if the script is run directly
     init_db()
