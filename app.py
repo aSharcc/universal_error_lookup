@@ -7,6 +7,7 @@ from google import genai # import the genai module from the google package for A
 import markdown2
 from markupsafe import Markup
 import nh3
+from flask_wtf.csrf import CSRFProtect
 
 load_dotenv()
 
@@ -14,6 +15,8 @@ app = Flask(__name__) # create a Flask application instance
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key and not app.debug:
     raise RuntimeError("FLASK_SECRET_KEY not found in environment, it must be set !!")
+
+csrf = CSRFProtect(app)
 
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -32,15 +35,18 @@ ALLOWED_ATTRIBUTES = {
 ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
 
 def init_db():
+    if not os.path.exists("schema.sql"):
+        print("schema.sql not found !! make it pls")
+        return
+    with sqlite3.connect(DATABASE) as db:
+        with open("schema.sql", "r") as schema:
+            db.executescript(schema.read())
+
+def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(DATABASE)
         g.db.row_factory = sqlite3.Row
     return g.db
-
-def get_db():
-    connection = sqlite3.connect(DATABASE) # connect to the SQLite database
-    connection.row_factory = sqlite3.Row # set the row factory to return rows as dictionaries
-    return connection
 
 def get_http_error(error_code):
     if error_code.isdigit() and len(error_code) == 3: # http codes are 3 digits
@@ -141,50 +147,46 @@ def index():
 
     if error_code: # check if the error code is empty
         connection = get_db() # get a database connection
-        try:
-            db_context = context if context else None
-            cached_result = connection.execute(
-                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND ((context = ?) OR (context IS NULL AND ? IS NULL))",
-                (error_code, db_context, db_context)
-            ).fetchone() # check if the error code is already in the database
+        cached_result = connection.execute(
+            "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND context = ?",
+            (error_code, context)
+        ).fetchone() # check if the error code is already in the database
 
-            if cached_result: # if the error code is found in the database
-                result_data = {
-                    "error_code": error_code,
-                    "source_api": cached_result["source_api"],
-                    "title": cached_result["title"],
-                    "result_summary": cached_result["result_summary"],
-                    "context": cached_result["context"] 
-                }
-            else: # if the error code is not found in the database
-                source_api, title, summary = get_error_info(error_code, context)
-                result_data = {
-                    "error_code": error_code,
-                    "source_api": source_api,
-                    "title": title,
-                    "result_summary": summary,
-                    "context": context
-                }
-                if source_api != "Manual Search Needed": # if the source API is not "Manual Search Needed"
-                    connection.execute(
-                        "INSERT OR IGNORE INTO searches (error_code, source_api, title, result_summary, context) VALUES (?, ?, ?, ?, ?)",
-                        (error_code, source_api, title, summary, context)
-                    ) # insert the new error code and summary into the database
-                    connection.commit() # commit the changes to the database
+        if cached_result: # if the error code is found in the database
+            result_data = {
+                "error_code": error_code,
+                "source_api": cached_result["source_api"],
+                "title": cached_result["title"],
+                "result_summary": cached_result["result_summary"],
+                "context": cached_result["context"] 
+            }
+        else: # if the error code is not found in the database
+            source_api, title, summary = get_error_info(error_code, context)
+            result_data = {
+                "error_code": error_code,
+                "source_api": source_api,
+                "title": title,
+                "result_summary": summary,
+                "context": context
+            }
+            if source_api != "Manual Search Needed": # if the source API is not "Manual Search Needed"
+                connection.execute(
+                    "INSERT OR IGNORE INTO searches (error_code, source_api, title, result_summary, context) VALUES (?, ?, ?, ?, ?)",
+                    (error_code, source_api, title, summary, context)
+                ) # insert the new error code and summary into the database
+                connection.commit() # commit the changes to the database
 
-            offset = (page-1) * 10
+        offset = (page-1) * 10
 
-            user_solutions = connection.execute(
-                "SELECT id, solution, author, votes FROM solutions WHERE error_code = ? ORDER BY votes DESC LIMIT 10 OFFSET ?",
-                (error_code, offset)
-            ).fetchall() # fetch all solutions for the given error code
+        user_solutions = connection.execute(
+            "SELECT id, solution, author, votes FROM solutions WHERE error_code = ? ORDER BY votes DESC LIMIT 10 OFFSET ?",
+            (error_code, offset)
+        ).fetchall() # fetch all solutions for the given error code
 
-            total_count = connection.execute(
-                "SELECT COUNT(*) FROM solutions WHERE error_code = ?",
-                (error_code,)
-            ).fetchone()[0]
-        finally:
-            connection.close() # close the database connection
+        total_count = connection.execute(
+            "SELECT COUNT(*) FROM solutions WHERE error_code = ?",
+            (error_code,)
+        ).fetchone()[0]
 
         voted_solutions = session.get("voted_solutions", []) 
         if not history or history[-1] != error_code:
@@ -220,14 +222,11 @@ def add_solution():
         return redirect(url_for("index", error_code=error_code, context=context))
 
     connection = get_db() # get a database connection
-    try:
-        connection.execute(
-            "INSERT INTO solutions (error_code, solution, author, context, votes) VALUES (?, ?, ?, ?, 0)",
-            (error_code, solution, author, context)
-        ) # insert the new solution into the database
-        connection.commit() # commit the changes to the database
-    finally:
-        connection.close() # close the database connection
+    connection.execute(
+        "INSERT INTO solutions (error_code, solution, author, context, votes) VALUES (?, ?, ?, ?, 0)",
+        (error_code, solution, author, context)
+    ) # insert the new solution into the database
+    connection.commit() # commit the changes to the database
     return redirect(url_for("index", error_code=error_code, context=context))
 
 @app.route("/vote", methods=["POST"]) # define the route for the searches page
@@ -246,26 +245,26 @@ def vote():
 
         if solution_id_int not in session["voted_solutions"]:
             connection = get_db() # get a database connection
-            try:
-                if vote_type == "upvote": # check if the vote type is upvote
-                    connection.execute(
-                        "UPDATE solutions SET votes = votes + 1 WHERE id = ?",
-                        (solution_id,)
-                    ) # increment the vote count for the specified solution ID
-                    connection.commit() # commit the changes to the database
-                elif vote_type == "downvote": # check if the vote type is downvote
-                    connection.execute(
-                        "UPDATE solutions SET votes = votes - 1 WHERE id = ?",
-                        (solution_id,)
-                    ) # decrement the vote count for the specified solution ID
-                    connection.commit() # commit the changes to the database
-                session["voted_solutions"].append(solution_id_int)
-                session.modified = True
-            finally:
-                connection.close() # close the database connection
-            if error_code:
-                return redirect(url_for("index", error_code=error_code, context=context, page=page))
-            return redirect(url_for("index"))    
+            if vote_type == "upvote": # check if the vote type is upvote
+                connection.execute(
+                    "UPDATE solutions SET votes = votes + 1 WHERE id = ?",
+                    (solution_id,)
+                ) # increment the vote count for the specified solution ID
+                connection.commit() # commit the changes to the database
+            elif vote_type == "downvote": # check if the vote type is downvote
+                connection.execute(
+                    "UPDATE solutions SET votes = votes - 1 WHERE id = ?",
+                    (solution_id,)
+                ) # decrement the vote count for the specified solution ID
+                connection.commit() # commit the changes to the database
+
+            session["voted_solutions"].append(solution_id_int)
+            session["voted_solutions"] = session["voted_solutions"][-50:]
+            session.modified = True
+
+    if error_code:
+        return redirect(url_for("index", error_code=error_code, context=context, page=page))
+    return redirect(url_for("index"))    
     
     return redirect("/")
 
@@ -289,5 +288,6 @@ def close_db(exception):
         db.close()
     
 if __name__ == "__main__": # check if the script is run directly
-    init_db()
+    with app.app_context():
+        init_db()
     app.run(debug=True) # run the Flask application in debug mode

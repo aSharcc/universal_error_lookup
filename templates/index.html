@@ -20,6 +20,7 @@
     <body>
         <h1>UNIVERSAL ERROR LOOKUP</h1>
         <form method="POST" action="/">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="text" name="error_code" placeholder="Enter error code" value="{{ error_code if error_code else '' }}" required maxlength="50">
             {% if history %}
                 <div style="margin-bottom: 0.5rem;">
@@ -88,6 +89,7 @@
                             <span style="color: green; font-weight: bold;">Voted</span>
                         {% else %}
                             <form method="POST" action="/vote">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="hidden" name="solution_id" value="{{ solution.id }}">
                                 <input type="hidden" name="error_code" value="{{ error_code }}">
                                 <input type="hidden" name="context" value="{{ context or '' }}">
@@ -119,6 +121,7 @@
         {% endif %}
         <h2>Add Solution</h2>
         <form method="POST" action="/add_solution">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="text" name="error_code" placeholder="Enter error code" value="{{ result.error_code if result else '' }}" required maxlength="50">
             <input type="text" placeholder="Context, keep to 1/2 words" name="context" value="{{ result.context if result else '' }}" maxlength="50">
             <input type="text" placeholder="Author" name="author" required maxlength="20">
