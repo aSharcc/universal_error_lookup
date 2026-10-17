@@ -19,13 +19,15 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 DATABASE = "error_lookup.db"
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "models/gemini-3.5-flash-lite")
-ALLOWED_TAGS = {
+ALLOWED_TAGS = { 
     "a", "b", "blockquote", "code", "em", "h1", "h2", "h3", "h4", "h5", "h6",
-    "hr", "i", "li", "ol", "p", "pre", "strong", "ul", "br", "p"
+    "hr", "i", "li", "ol", "p", "pre", "strong", "ul", "br"
 }
 ALLOWED_ATTRIBUTES = {
     "a": {"href", "title"},
 }
+
+ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
 
 def init_db():
     if not os.path.exists("schema.sql"):
@@ -140,9 +142,10 @@ def index():
     if error_code: # check if the error code is empty
         connection = get_db() # get a database connection
         try:
+            db_context = context if context else None
             cached_result = connection.execute(
-                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND COALESCE(context, '') = COALESCE(?, '')",
-                (error_code, context)
+                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND (context = ?) OR (context IS NULL AND ? IS NULL)",
+                (error_code, db_context, db_context)
             ).fetchone() # check if the error code is already in the database
 
             if cached_result: # if the error code is found in the database
@@ -207,10 +210,10 @@ def index():
 
 @app.route("/add_solution", methods=["POST"]) # define the route for the searches page
 def add_solution():
-    error_code = request.form.get("error_code", "").strip() # get the error code from the form data
-    author = request.form.get("author", "").strip() # get the author from the form data
-    solution = request.form.get("solution", "").strip() # get the solution from the form
-    context = (request.form.get("context") or "").strip()
+    error_code = request.form.get("error_code", "").strip()[:50] # get the error code from the form data
+    author = request.form.get("author", "").strip()[:20] # get the author from the form data
+    solution = request.form.get("solution", "").strip()[:200] # get the solution from the form
+    context = (request.form.get("context") or "").strip()[:50]
 
     if not error_code or not author or not solution: # check if any of the required fields are empty
         flash("Please fill all required fields.", "error")
@@ -274,7 +277,7 @@ def render_markdown(text):
     raw_html = markdown2.markdown(text)
 
     clean_html = nh3.clean(
-        raw_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES
+        raw_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES, url_schemes=ALLOWED_URL_SCHEMES
     )
 
     return Markup(clean_html)
