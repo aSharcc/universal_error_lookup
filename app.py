@@ -5,17 +5,19 @@ import os # import the os module for interacting with the operating system
 from dotenv import load_dotenv
 from google import genai # import the genai module from the google package for AI functionality
 import markdown2
+from markupsafe import Markup
 
 load_dotenv()
 
 app = Flask(__name__) # create a Flask application instance
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_key!!")
 
-app.config['SESSION_COOKIE_SECURE'] = False 
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 DATABASE = "error_lookup.db"
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "models/gemini-3.5-flash-lite")
 
 def init_db():
     if not os.path.exists("schema.sql"):
@@ -64,19 +66,19 @@ def get_error_from_ai(error_code, context):
             f"Context: {context if context else 'No additional context provided.'}"
             f"The 1st line of the response should be the title"
         )
-
         response = client.models.generate_content( 
-            model="models/gemini-3.5-flash-lite", 
+            model=GEMINI_MODEL, 
             contents=contents
         ).text
         if response:
             parts = response.split('\n', 1) # split the title and the content
+            if len(parts) == 2:
+                title, summary = parts[0].strip(),parts[1].strip()
+            else:
+                title, summary = f"Error {error_code} Analysis", parts[0].strip()
         else:
-            parts = ["", ""]
-        if len(parts) != 2:
-            parts = ["", ""]
-        print(response)
-        return ("AI Generated", parts[0].strip(), parts[1].strip()) # return the AI-generated explanation of the error code
+            title, summary = "", ""
+        return ("AI Generated", title, summary) # return the AI-generated explanation of the error code
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return ("Manual Search Needed", "Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
@@ -104,7 +106,7 @@ def index():
         connection = get_db() # get a database connection
         try:
             cached_result = connection.execute(
-                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND context = ?",
+                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND COALESCE(context, '') = COALESCE(?, '')",
                 (error_code, context)
             ).fetchone() # check if the error code is already in the database
 
@@ -176,7 +178,7 @@ def add_solution():
     context = (request.form.get("context") or "").strip()
 
     if not error_code or not author or not solution: # check if any of the required fields are empty
-        flash("Please fill all required fields.")
+        flash("Please fill all required fields.", "error")
         return redirect(url_for("index", error_code=error_code, context=context))
 
     connection = get_db() # get a database connection
@@ -201,7 +203,7 @@ def vote():
     if "voted_solutions" not in session:
         session["voted_solutions"] = []
 
-    if solution_id: # check if the solution ID is provided
+    if solution_id and solution_id.isdigit(): # check if the solution ID is provided
         solution_id_int = int(solution_id)
 
         if solution_id_int not in session["voted_solutions"]:
@@ -233,7 +235,7 @@ def vote():
 def render_markdown(text):
     if not text:
         return ""
-    return markdown2.markdown(text, extras=["safe-mode"])
+    return Markup(markdown2.markdown(text, extras=["safe-mode"]))
     
 if __name__ == "__main__": # check if the script is run directly
     init_db()

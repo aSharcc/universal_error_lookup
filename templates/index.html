@@ -38,7 +38,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    <article style="padding: 1rem; border: 5px solid red;">{{ message }}</article>
                 {% endfor %}
             {% endif %}
         {% endwith %}
@@ -51,18 +51,20 @@
             </div>
             <p><b>Error Code:</b> {{ result.error_code }}</p>
             <p><b>Source API:</b> {{ result.source_api }}</p>
-            <p><b>Title:</b> {{ result.title | markdown | safe }}</p>
-            <p><b>Result Summary:</b> {{ result.result_summary | markdown | safe }}</p>
-            <p><b>Context:</b> {{ result.context }}</p>
+            <p><b>Title:</b> {{ result.title | markdown}}</p>
+            <p><b>Result Summary:</b> {{ result.result_summary | markdown}}</p>
+            {% if result.context != '' %}
+                <p><b>Context:</b> {{ result.context }}</p>
+            {% endif %}
             {% set search_query = (result.error_code + ' ' + (result.context or ''))|trim + ' error fix' %}
-            <a href="https://www.google.com/search?q={{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
-                <button type="button">Google Search</button>
+            <a href="https://www.google.com/search?q={{ search_query|urlencode }}" class="outline" role="button" target="_blank" rel="noopener noreferrer">
+                Google Search
             </a>
-            <a href="https://www.google.com/search?q=site:reddit.com+{{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
-                <button type="button">Reddit Search</button>
+            <a href="https://www.google.com/search?q=site:reddit.com+{{ search_query|urlencode }}" class="outline" role="button" target="_blank" rel="noopener noreferrer">
+                Reddit Search
             </a>
-            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ search_query|urlencode }}" target="_blank" rel="noopener noreferrer">
-                <button type="button">Stack Overflow Search</button>
+            <a href="https://www.google.com/search?q=site:stackoverflow.com+{{ search_query|urlencode }}" class="outline" role="button" target="_blank" rel="noopener noreferrer">
+                Stack Overflow Search
             </a>
         {% endif %}
 
@@ -101,16 +103,16 @@
             </tbody>
         </table>
         <div>
-            <p>{{ page }}</p>
+            <p>Page {{ page }}</p>
             {% if page > 1 %}
-                <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page - 1 }}">
-                    <button type="button">Previous</button>
+                <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page - 1 }}" class="outline" role="button">
+                    Previous
                 </a>
             {% endif %}
-            <span>{{ 1+(page-1)*10 }} to {{ (page)*10 }} out of {{ total_count }}</span>
+            <span>{{ 1+ (page-1) * 10 }} to {{ [(page) * 10, total_count] | min }} out of {{ total_count }}</span>
             {% if (page*10 < total_count) %}
-            <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page + 1 }}">
-                <button type="button">Next</button>
+            <a href="/?error_code={{ error_code|urlencode }}&context={{ context|urlencode }}&page={{ page + 1 }}" class="outline" role="button">
+                Next
             </a>
             {% endif %}
         </div>
