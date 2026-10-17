@@ -1,5 +1,5 @@
 import sqlite3 # import the sqlite3 module for database operations
-from flask import Flask, request, render_template, redirect, session, flash, url_for # import Flask and other necessary modules for webapp functionallity
+from flask import Flask, request, render_template, redirect, session, flash, url_for, g # import Flask and other necessary modules for webapp functionallity
 import requests # import the requests module for making HTTP requests
 import os # import the os module for interacting with the operating system
 from dotenv import load_dotenv
@@ -11,7 +11,9 @@ import nh3
 load_dotenv()
 
 app = Flask(__name__) # create a Flask application instance
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_key!!")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not app.secret_key and not app.debug:
+    raise RuntimeError("FLASK_SECRET_KEY not found in environment, it must be set !!")
 
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -144,7 +146,7 @@ def index():
         try:
             db_context = context if context else None
             cached_result = connection.execute(
-                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND (context = ?) OR (context IS NULL AND ? IS NULL)",
+                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND ((context = ?) OR (context IS NULL AND ? IS NULL))",
                 (error_code, db_context, db_context)
             ).fetchone() # check if the error code is already in the database
 
