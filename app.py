@@ -302,7 +302,7 @@ def close_db(exception):
 
 @app.errorhandler(429)
 def too_many_requests(e):
-    return "too many requests. please wait a minute and try again :3"
+    return "too many requests. please wait a minute and try again :3", 429
 
 init_db()
     
