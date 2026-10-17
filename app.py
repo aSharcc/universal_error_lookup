@@ -147,7 +147,7 @@ def get_error_info(error_code, context):
     return get_error_from_ai(error_code, context) # call the AI function to get error information if not found in HTTP or system errors
 
 @app.route("/", methods=["GET", "POST"]) # define the route for the home page
-@limiter.limip("15 per minute")
+@limiter.limit("15 per minute")
 def index():
     error_code = request.form.get("error_code", "").strip() or request.args.get("error_code", "").strip() # get the error code from the form data
     context = (request.form.get("context") or request.args.get("context") or "").strip()
@@ -299,6 +299,10 @@ def close_db(exception):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return "too many requests. please wait a minute and try again :3"
 
 init_db()
     
