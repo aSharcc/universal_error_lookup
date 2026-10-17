@@ -32,12 +32,10 @@ ALLOWED_ATTRIBUTES = {
 ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
 
 def init_db():
-    if not os.path.exists("schema.sql"):
-        print("Schema.sql not found !!")
-        return
-    with sqlite3.connect(DATABASE) as connection:
-        with open("schema.sql") as file:
-            connection.executescript(file.read())
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE)
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
 def get_db():
     connection = sqlite3.connect(DATABASE) # connect to the SQLite database
@@ -283,6 +281,12 @@ def render_markdown(text):
     )
 
     return Markup(clean_html)
+
+@app.teardown_appcontext
+def close_db(exception):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
     
 if __name__ == "__main__": # check if the script is run directly
     init_db()
