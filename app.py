@@ -113,15 +113,17 @@ def get_error_from_ai(error_code, context):
             )
         ).text
         
-        if response:
-            parts = response.split('\n', 1) # split the title and the content
-            if len(parts) == 2:
-                title, summary = parts[0].strip(),parts[1].strip()
-            else:
-                title, summary = f"Error {error_code} Analysis", parts[0].strip()
+        if not response or not response.strip():
+            raise ValueError("Empty response")
+        response = response.strip()
+        if response.startswith("I cannot process requests"):
+            raise ValueError("Model refused")
+        parts = response.split("\n", 1)
+        if len (parts) == 2:
+            title, summary = parts[0].strip(), parts[1].strip()
         else:
-            title, summary = "", ""
-        return ("AI Generated", title, summary) # return the AI-generated explanation of the error code
+            title, summary = f"Error {error_code} Analysis", parts[0]
+            return ("AI Generated", title, summary) # return the AI-generated explanation of the error code
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return ("Manual Search Needed", "Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
@@ -286,8 +288,8 @@ def close_db(exception):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+init_db()
     
 if __name__ == "__main__": # check if the script is run directly
-    with app.app_context():
-        init_db()
-    app.run(debug=True) # run the Flask application in debug mode
+    app.run(debug=os.environ.get("FLASK_DEBUG") == 1) # run the Flask application in debug mode
