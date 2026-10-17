@@ -8,6 +8,8 @@ import markdown2
 from markupsafe import Markup
 import nh3
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
@@ -17,6 +19,13 @@ if not app.secret_key and not app.debug:
     raise RuntimeError("FLASK_SECRET_KEY not found in environment, it must be set !!")
 
 csrf = CSRFProtect(app)
+
+limiter = Limiter (
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -138,6 +147,7 @@ def get_error_info(error_code, context):
     return get_error_from_ai(error_code, context) # call the AI function to get error information if not found in HTTP or system errors
 
 @app.route("/", methods=["GET", "POST"]) # define the route for the home page
+@limiter.limip("15 per minute")
 def index():
     error_code = request.form.get("error_code", "").strip() or request.args.get("error_code", "").strip() # get the error code from the form data
     context = (request.form.get("context") or request.args.get("context") or "").strip()
@@ -214,6 +224,7 @@ def index():
     
 
 @app.route("/add_solution", methods=["POST"]) # define the route for the searches page
+@limiter.limit("5 per minute")
 def add_solution():
     error_code = request.form.get("error_code", "").strip()[:50] # get the error code from the form data
     author = request.form.get("author", "").strip()[:20] # get the author from the form data
@@ -233,6 +244,7 @@ def add_solution():
     return redirect(url_for("index", error_code=error_code, context=context))
 
 @app.route("/vote", methods=["POST"]) # define the route for the searches page
+@limiter.limit("20 per minute")
 def vote():
     solution_id = request.form.get("solution_id") # get the solution ID from the query parameters
     vote_type = request.form.get("vote_type") # get the vote type from the query parameters (upvote or downvote)
