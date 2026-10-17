@@ -67,7 +67,7 @@ def get_system_error(error_code):
             message = os.strerror(int(error_code)) # get the system error message for the given error code
             if message and "Unknown error" not in message: # check if the message is valid and not unknown
                 return ("OS System Error", f"Error code {error_code}", f"System error {error_code}: {message}") # return the system error message
-        except ValueError:
+        except (ValueError,OverflowError):
             return None # return None if the error code is not valid
     else: 
         return None # return None if the error code is not a digit, so it can move to the next fallback
@@ -123,7 +123,7 @@ def get_error_from_ai(error_code, context):
             title, summary = parts[0].strip(), parts[1].strip()
         else:
             title, summary = f"Error {error_code} Analysis", parts[0]
-            return ("AI Generated", title, summary) # return the AI-generated explanation of the error code
+        return ("AI Generated", title, summary) # return the AI-generated explanation of the error code
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return ("Manual Search Needed", "Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
@@ -142,6 +142,7 @@ def index():
     error_code = request.form.get("error_code", "").strip() or request.args.get("error_code", "").strip() # get the error code from the form data
     context = (request.form.get("context") or request.args.get("context") or "").strip()
     page = request.args.get("page", 1, type=int) or request.form.get("page", 1, type=int)
+    page = min(max(page, 1), 1000)
 
     if "search_history" not in session:
         session["search_history"] = []
@@ -267,8 +268,6 @@ def vote():
     if error_code:
         return redirect(url_for("index", error_code=error_code, context=context, page=page))
     return redirect(url_for("index"))    
-    
-    return redirect("/")
 
 @app.template_filter("markdown")
 def render_markdown(text):
@@ -292,4 +291,4 @@ def close_db(exception):
 init_db()
     
 if __name__ == "__main__": # check if the script is run directly
-    app.run(debug=os.environ.get("FLASK_DEBUG") == 1) # run the Flask application in debug mode
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1") # run the Flask application in debug mode
