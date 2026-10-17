@@ -1,10 +1,10 @@
 import sqlite3 # import the sqlite3 module for database operations
-from flask import Flask, request, render_template, redirect, session, flash, url_for # import Flask and other necessary modules
+from flask import Flask, request, render_template, redirect, session, flash, url_for # import Flask and other necessary modules for webapp functionallity
 import requests # import the requests module for making HTTP requests
 import os # import the os module for interacting with the operating system
 from google import genai # import the genai module from the google package for AI functionality
 
-app = Flask(__name__) # create a Flask application instance
+app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 DATABASE = "error_lookup.db"
@@ -20,17 +20,16 @@ def init_db():
 def get_db():
     connection = sqlite3.connect(DATABASE) # connect to the SQLite database
     connection.row_factory = sqlite3.Row # set the row factory to return rows as dictionaries
-    return connection # return the database connection
+    return connection
 
 def get_http_error(error_code):
-    if error_code.isdigit() and len(error_code) == 3: # check if the error code is a 3-digit number
+    if error_code.isdigit() and len(error_code) == 3: # http codes are 3 digits
         try:
-            url = f"https://httpstatuses.io/{error_code}.json" # define the URL for the HTTP statuses API
-            response = requests.get(url, timeout=5) # make a GET request to the URL with a timeout
-            if response.status_code == 200: # check if the response status code is 200 (OK)
+            url = f"https://httpstatuses.io/{error_code}.json" # URL for the HTTP statuses API
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200: # if api succeeds
                 data = response.json() # parse the JSON response
-                summary = f"{data.get('title')}: {data.get('description')}" # create a summary from the title and description
-                return ("HTTP Statuses API", summary) # return the parsed JSON data
+                return ("HTTP Statuses API", f"{data.get('title')}", f"{data.get('description')}") # return the parsed JSON data
         except requests.RequestException:
             return None
     else:
@@ -41,11 +40,11 @@ def get_system_error(error_code):
         try:
             message = os.strerror(int(error_code)) # get the system error message for the given error code
             if message and "Unknown error" not in message: # check if the message is valid and not unknown
-                return ("OS System Error", f"System error {error_code}: {message}") # return the system error message
+                return ("OS System Error", f"Error code {error_code}", f"System error {error_code}: {message}") # return the system error message
         except ValueError:
             return None # return None if the error code is not valid
     else: 
-        return None # return None if the error code is not a digit
+        return None # return None if the error code is not a digit, so it can move to the next fallback
 
 def get_error_from_ai(error_code, context):
     try:
@@ -53,15 +52,18 @@ def get_error_from_ai(error_code, context):
 
         contents=(
             f"Explain technical error code '{error_code}' in 2-3 concise sentences. "
-            f"State what causes it and how to fix it. "
+            f"State what causes it and how to fix it."
             f"Context: {context if context else 'No additional context provided.'}"
+            f"The 1st line of the response should be the title"
         )
 
         response = client.models.generate_content( 
             model="models/gemini-3.5-flash-lite", 
             contents=contents
-        )
-        return ("AI Generated", response.text.strip()) # return the AI-generated explanation of the error code
+        ).text
+        response = response.split('\n', 1) # split the title and the content
+        print(response)
+        return ("AI Generated", response[0], response[1].strip()) # return the AI-generated explanation of the error code
     except Exception as e:
         print(f"Gemini API Error: {e}")
         return ("Manual Search Needed", f"Could not retrieve information for error code {error_code}. Please search using links below.") # return a message indicating that manual search is needed
@@ -89,7 +91,7 @@ def index():
         connection = get_db() # get a database connection
         try:
             cached_result = connection.execute(
-                "SELECT source_api, result_summary, context FROM searches WHERE error_code = ? AND context = ?",
+                "SELECT source_api, title, result_summary, context FROM searches WHERE error_code = ? AND context = ?",
                 (error_code, context)
             ).fetchone() # check if the error code is already in the database
 
@@ -97,21 +99,23 @@ def index():
                 result_data = {
                     "error_code": error_code,
                     "source_api": cached_result["source_api"],
+                    "title": cached_result["title"],
                     "result_summary": cached_result["result_summary"],
-                    "context": cached_result["context"]
+                    "context": cached_result["context"] 
                 }
             else: # if the error code is not found in the database
-                source_api, summary = get_error_info(error_code, context) # call the error information lookup function
+                source_api, title, summary = get_error_info(error_code, context)
                 result_data = {
                     "error_code": error_code,
                     "source_api": source_api,
+                    "title": title,
                     "result_summary": summary,
                     "context": context
                 }
                 if source_api != "Manual Search Needed": # if the source API is not "Manual Search Needed"
                     connection.execute(
-                        "INSERT OR IGNORE INTO searches (error_code, source_api, result_summary, context) VALUES (?, ?, ?, ?)",
-                        (error_code, source_api, summary, context)
+                        "INSERT OR IGNORE INTO searches (error_code, source_api, title, result_summary, context) VALUES (?, ?, ?, ?, ?)",
+                        (error_code, source_api, title, summary, context)
                     ) # insert the new error code and summary into the database
                     connection.commit() # commit the changes to the database
 

@@ -51,6 +51,7 @@
             </div>
             <p><b>Error Code:</b> {{ result.error_code }}</p>
             <p><b>Source API:</b> {{ result.source_api }}</p>
+            <p><b>Title:</b> {{ result.title }}</p>
             <p><b>Result Summary:</b> {{ result.result_summary }}</p>
             <p><b>Context:</b> {{ result.context }}</p>
             {% set search_query = (result.error_code + ' ' + (result.context or ''))|trim + ' error fix' %}

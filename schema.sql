@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS searches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     error_code TEXT NOT NULL,
     source_api TEXT NOT NULL,
+    title TEXT NOT NULL,
     result_summary TEXT NOT NULL,
     context TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
